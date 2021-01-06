@@ -1,0 +1,43 @@
+use super::{lex, syntax::{Language, SyntaxKind}};
+use rowan::{Language as _, GreenNode, GreenToken, NodeOrToken};
+
+grammar<'source>;
+
+extern {
+    type Location = usize;
+    type Error = lex::NoError;
+
+    enum lex::Token<'source> {
+        "+" => lex::Token { kind: SyntaxKind::Plus, text: <&'source str> },
+        "-" => lex::Token { kind: SyntaxKind::Minus, text: <&'source str> },
+        "*" => lex::Token { kind: SyntaxKind::Mult, text: <&'source str> },
+        "/" => lex::Token { kind: SyntaxKind::Div, text: <&'source str> },
+        "(" => lex::Token { kind: SyntaxKind::ParenOpen, text: <&'source str> },
+        ")" => lex::Token { kind: SyntaxKind::ParenClose, text: <&'source str> },
+        "Number" => lex::Token { kind: SyntaxKind::Number, text: <&'source str> },
+    }
+}
+
+pub Expr: NodeOrToken<GreenNode, GreenToken> = {
+    <l:Expr> "+" <r:Factor> => GreenNode::new(Language::kind_to_raw(SyntaxKind::BinOp), vec![l, r]).into(),
+    <l:Expr> "-" <r:Factor> => GreenNode::new(Language::kind_to_raw(SyntaxKind::BinOp), vec![l, r]).into(),
+    Factor,
+};
+
+Factor: NodeOrToken<GreenNode, GreenToken> = {
+    <l:Factor> "*" <r:Term> => GreenNode::new(Language::kind_to_raw(SyntaxKind::BinOp), vec![l, r]).into(),
+    <l:Factor> "/" <r:Term> => GreenNode::new(Language::kind_to_raw(SyntaxKind::BinOp), vec![l, r]).into(),
+    Term,
+};
+
+Term: NodeOrToken<GreenNode, GreenToken> = {
+    Num,
+    "(" <Expr> ")",
+};
+
+Num: NodeOrToken<GreenNode, GreenToken> = {
+    <text: "Number"> => lex::Token {
+        kind: SyntaxKind::Number,
+        text,
+    }.into(),
+};
